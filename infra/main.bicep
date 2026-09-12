@@ -45,8 +45,9 @@ param resourceGroupName string = 'rg-${environmentName}'
 ])
 param location string
 
-@metadata({azd: {
-  type: 'location'
+@metadata({
+  azd: {
+    type: 'location'
   }
 })
 param aiDeploymentsLocation string
@@ -67,6 +68,17 @@ param aiFoundryProjectName string = 'ai-project-${environmentName}'
 param aiProjectDeploymentsJson string = '''
 [
   {
+    "name": "gpt-4o",
+    "model": {
+      "format": "OpenAI",
+      "name": "gpt-4o"
+    },
+    "sku": {
+      "name": "GlobalStandard",
+      "capacity": 10
+    }
+  },
+  {
     "name": "gpt-5.1",
     "model": {
       "format": "OpenAI",
@@ -77,7 +89,6 @@ param aiProjectDeploymentsJson string = '''
       "capacity": 10
     }
   }
-
 ]
 '''
 
@@ -119,12 +130,14 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // Build dependent resources array conditionally
 // Check if ACR already exists in the user-provided array to avoid duplicates
 var hasAcr = contains(map(aiProjectDependentResources, r => r.resource), 'registry')
-var dependentResources = (enableHostedAgents) && !hasAcr ? union(aiProjectDependentResources, [
-  {
-    resource: 'registry'
-    connectionName: 'acr-connection'
-  }
-]) : aiProjectDependentResources
+var dependentResources = (enableHostedAgents) && !hasAcr
+  ? union(aiProjectDependentResources, [
+      {
+        resource: 'registry'
+        connectionName: 'acr-connection'
+      }
+    ])
+  : aiProjectDependentResources
 
 // AI Project module
 module aiProject 'core/ai/ai-project.bicep' = {
@@ -166,7 +179,7 @@ output AZURE_AI_PROJECT_ACR_CONNECTION_NAME string = aiProject.outputs.dependent
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = aiProject.outputs.dependentResources.registry.loginServer
 
 // Bing Search
-output BING_GROUNDING_CONNECTION_NAME  string = aiProject.outputs.dependentResources.bing_grounding.connectionName
+output BING_GROUNDING_CONNECTION_NAME string = aiProject.outputs.dependentResources.bing_grounding.connectionName
 output BING_GROUNDING_RESOURCE_NAME string = aiProject.outputs.dependentResources.bing_grounding.name
 output BING_GROUNDING_CONNECTION_ID string = aiProject.outputs.dependentResources.bing_grounding.connectionId
 
